@@ -3,3 +3,4 @@ tools/modbus-cli
 tools/modbus-flash
 *.hex
 *.eep
+*.bak
