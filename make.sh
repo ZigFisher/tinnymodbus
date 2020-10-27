@@ -1,4 +1,6 @@
 #!/bin/bash
+#
+# apt-get install avr-libc avrdude binutils-avr gcc-avr 
 
 # clean
 rm -rf build/*
