@@ -54,8 +54,33 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <vector>
+typedef struct {
+  uint8_t *array;
+  size_t used;
+  size_t size;
+} Array;
 
+void initArray(Array *a, size_t initialSize) {
+  a->array = malloc(initialSize * sizeof(int));
+  a->used = 0;
+  a->size = initialSize;
+}
+
+void insertArray(Array *a, int element) {
+  // a->used is the number of used entries, because a->array[a->used++] updates a->used only *after* the array has been accessed.
+  // Therefore a->used can go up to a->size
+  if (a->used == a->size) {
+    a->size *= 2;
+    a->array = realloc(a->array, a->size * sizeof(int));
+  }
+  a->array[a->used++] = element;
+}
+
+void freeArray(Array *a) {
+  free(a->array);
+  a->array = NULL;
+  a->used = a->size = 0;
+}
 
 
 /*
@@ -187,7 +212,8 @@ int main( int argc, char**argv )
     // data base address
     int baseaddress = -1;
     // data storage container
-    std::vector<uint8_t> dataflash;
+    Array dataflash;
+    initArray(&dataflash, 5);
 
 
     // open intel hex file
@@ -251,7 +277,7 @@ int main( int argc, char**argv )
 
           // store octet
           uint8_t val = (uint8_t) strtol(buf, NULL, 16);
-          dataflash.push_back(val);
+	  insertArray(&dataflash, val);
 
         }
       }
@@ -260,7 +286,7 @@ int main( int argc, char**argv )
     fclose(fhex);
 
 
-    printf("Loaded %lu octets from [%s] @0x%04x base.\n", dataflash.size(), hexfile, baseaddress);
+    printf("Loaded %lu octets from [%s] @0x%04x base.\n", dataflash.used, hexfile, baseaddress);
 
 
     int fd;
@@ -301,15 +327,15 @@ int main( int argc, char**argv )
 
     int offset = 0;
     // burn data in 32 octet batches
-    for ( long unsigned int i = 0; i < dataflash.size(); i++ )
+    for ( long unsigned int i = 0; i < dataflash.used; i++ )
     {
 
       // place octet on wire message
-      msg[offset + 6] = dataflash[i];
+      msg[offset + 6] = dataflash.array[i];
 
       // time to send message on wire
       if ( ( ( i != 0) && ( (i+1) % 32 == 0 ) ) ||
-           ( i+1 == dataflash.size() ) )
+           ( i+1 == dataflash.used) )
       {
         // base address
         msg[2] = (baseaddress & 0x0000ff00) >> 8;
